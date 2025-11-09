@@ -1,0 +1,47 @@
+{
+  "name": "indian-recipe-api",
+  "version": "1.0.0",
+  "private": false,
+  "description": "A modern REST API for Indian recipes with images - 6,673+ recipes from Archana's Kitchen",
+  "main": "app.js",
+  "scripts": {
+    "start": "node ./bin/www",
+    "dev": "nodemon ./bin/www",
+    "migrate": "node migrate.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Soham156/Indian-Recipe-API-with-Images.git"
+  },
+  "keywords": [
+    "indian-recipes",
+    "recipe-api",
+    "food-api",
+    "express",
+    "nodejs",
+    "postgresql",
+    "rest-api"
+  ],
+  "author": "Sachinart",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Soham156/Indian-Recipe-API-with-Images/issues"
+  },
+  "homepage": "https://github.com/Soham156/Indian-Recipe-API-with-Images#readme",
+  "dependencies": {
+    "axios": "^0.21.2",
+    "cheerio": "^1.0.0-rc.12",
+    "cookie-parser": "~1.4.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "~4.16.1",
+    "http-errors": "^1.6.3",
+    "jade": "~1.11.0",
+    "pg": "^8.16.3",
+    "sqlite3": "^5.1.6"
+  },
+  "devDependencies": {
+    "csv-parser": "^3.2.0",
+    "nodemon": "^3.0.1"
+  }
+}
