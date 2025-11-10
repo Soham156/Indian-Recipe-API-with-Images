@@ -7,10 +7,14 @@ A modern REST API built with Node.js and Express.js to search and retrieve India
 - 🔍 Search 6,673+ Indian recipes
 - 🖼️ Recipe images included
 - 🌐 CORS enabled - ready for cross-origin requests
-- 📱 Simple REST API
-- �️ PostgreSQL database (with SQLite fallback)
-- �🚀 Easy to deploy
+- 📱 Simple REST API with multiple endpoints
+- 🗄️ PostgreSQL database (with SQLite fallback)
+- 🚀 Easy to deploy
 - 🔧 Customizable configuration
+- 🎯 **Advanced Filtering** - Filter by cuisine, course, diet type
+- 📊 **API Statistics** - Get recipe counts and available filters
+- 📄 **Pagination Support** - Efficiently browse large result sets
+- 🔎 **Dynamic Search** - Search with multiple combined filters
 
 ## Quick Start
 
@@ -65,42 +69,121 @@ The API will run on `http://localhost:3000`
 
 ## API Usage
 
-### Search Recipes
+### Quick Overview
 
-**Endpoint:** `GET /?q=<search_query>`
+For detailed documentation of all endpoints and features, see **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)**
+
+### Available Endpoints
+
+| Endpoint             | Description                           |
+| -------------------- | ------------------------------------- |
+| `GET /`              | API documentation and information     |
+| `GET /recipes`       | Get all recipes with optional filters |
+| `GET /recipes/:id`   | Get a specific recipe by ID           |
+| `GET /search?q=term` | Search recipes by name                |
+| `GET /stats`         | Get API statistics and filter options |
+| `GET /cuisines`      | List all cuisines with counts         |
+| `GET /courses`       | List all courses with counts          |
+| `GET /diets`         | List all diet types with counts       |
+
+### Quick Examples
+
+#### 1. Get All Recipes (Paginated)
+
+```
+GET /recipes
+GET /recipes?page=2&limit=50
+```
+
+#### 2. Filter Recipes
+
+```
+# Vegetarian recipes only
+GET /recipes?diet=Vegetarian
+
+# North Indian dinner recipes
+GET /recipes?cuisine=North Indian Recipes&course=Dinner
+
+# Search for curry in vegetarian recipes
+GET /recipes?search=curry&diet=Vegetarian
+```
+
+#### 3. Get Specific Recipe
+
+```
+GET /recipes/123
+```
+
+#### 4. Search Recipes
+
+```
+GET /search?q=biryani
+```
+
+#### 5. Get Statistics
+
+```
+GET /stats
+GET /cuisines
+GET /diets
+```
+
+### Filter Parameters
+
+| Parameter | Description                 | Example                         |
+| --------- | --------------------------- | ------------------------------- |
+| `diet`    | Filter by diet type         | `?diet=Vegetarian`              |
+| `cuisine` | Filter by cuisine           | `?cuisine=North Indian Recipes` |
+| `course`  | Filter by course            | `?course=Dinner`                |
+| `search`  | Search in recipe names      | `?search=curry`                 |
+| `page`    | Page number (default: 1)    | `?page=2`                       |
+| `limit`   | Results per page (max: 100) | `?limit=50`                     |
+
+### Response Format
+
+All list endpoints return data with pagination info:
+
+```json
+{
+  "page": 1,
+  "limit": 20,
+  "totalRecipes": 150,
+  "totalPages": 8,
+  "filters": {
+    "cuisine": null,
+    "course": "Dinner",
+    "diet": "Vegetarian",
+    "search": null
+  },
+  "recipes": [
+    {
+      "id": 1,
+      "RecipeName": "Palak Paneer",
+      "TranslatedRecipeName": "Spinach with Cottage Cheese",
+      "Ingredients": "...",
+      "PrepTimeInMins": "15",
+      "CookTimeInMins": "30",
+      "Servings": "4",
+      "Cuisine": "North Indian Recipes",
+      "Course": "Dinner",
+      "Diet": "Vegetarian",
+      "ImageURL": "https://...",
+      "URL": "https://..."
+    }
+  ]
+}
+```
+
+### Legacy Search Endpoint (Deprecated)
+
+**Note:** The `/?q=term` endpoint is now deprecated. Use `/search?q=term` instead.
+
+**Old Endpoint:** `GET /?q=<search_query>`
 
 **Example:**
 
 ```
 http://localhost:3000/?q=biryani
-```
-
-**Response:** JSON array of matching recipes with full details including:
-
-- Recipe name and translated name
-- Ingredients and instructions
-- Prep time, cook time, servings
-- Cuisine, course, diet type
-- Recipe image URL
-- Original recipe URL
-
-**Sample Response:**
-
-```json
-[
-  {
-    "id": 1568,
-    "RecipeName": "Aloo Subz Dum Biryani Recipe",
-    "Ingredients": "2 Potatoes (Aloo) - peeled and cubed...",
-    "PrepTimeInMins": "20",
-    "CookTimeInMins": "50",
-    "Servings": "4",
-    "Cuisine": "North Indian Recipes",
-    "Diet": "Vegetarian",
-    "ImageURL": "https://images.archanaskitchen.com/...",
-    "URL": "https://www.archanaskitchen.com/..."
-  }
-]
 ```
 
 ## Using from Other Websites

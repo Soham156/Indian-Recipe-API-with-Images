@@ -20,13 +20,283 @@ if (DB_TYPE === "postgresql") {
   console.log("Using SQLite database at:", dbPath);
 }
 
-/* GET all recipes with pagination */
+/* Helper function to build WHERE clause dynamically */
+function buildWhereClause(filters, params) {
+  const conditions = [];
+  let paramCount = 0;
+
+  if (filters.cuisine) {
+    paramCount++;
+    conditions.push(`LOWER("Cuisine") = LOWER($${paramCount})`);
+    params.push(filters.cuisine);
+  }
+
+  if (filters.course) {
+    paramCount++;
+    conditions.push(`LOWER("Course") = LOWER($${paramCount})`);
+    params.push(filters.course);
+  }
+
+  if (filters.diet) {
+    paramCount++;
+    conditions.push(`LOWER("Diet") = LOWER($${paramCount})`);
+    params.push(filters.diet);
+  }
+
+  if (filters.search) {
+    paramCount++;
+    conditions.push(
+      `(LOWER("RecipeName") LIKE LOWER($${paramCount}) OR LOWER("TranslatedRecipeName") LIKE LOWER($${paramCount}))`
+    );
+    params.push(`%${filters.search}%`);
+  }
+
+  return conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
+}
+
+/* GET API stats and available filters */
+router.get("/stats", async function (req, res, next) {
+  try {
+    if (DB_TYPE === "postgresql") {
+      // Get total count
+      const totalCount = await db.query(
+        "SELECT COUNT(*) as count FROM recipes"
+      );
+
+      // Get unique cuisines with count
+      const cuisines = await db.query(
+        `SELECT "Cuisine", COUNT(*) as count 
+         FROM recipes 
+         WHERE "Cuisine" IS NOT NULL AND "Cuisine" != ''
+         GROUP BY "Cuisine" 
+         ORDER BY count DESC`
+      );
+
+      // Get unique courses with count
+      const courses = await db.query(
+        `SELECT "Course", COUNT(*) as count 
+         FROM recipes 
+         WHERE "Course" IS NOT NULL AND "Course" != ''
+         GROUP BY "Course" 
+         ORDER BY count DESC`
+      );
+
+      // Get unique diets with count
+      const diets = await db.query(
+        `SELECT "Diet", COUNT(*) as count 
+         FROM recipes 
+         WHERE "Diet" IS NOT NULL AND "Diet" != ''
+         GROUP BY "Diet" 
+         ORDER BY count DESC`
+      );
+
+      res.json({
+        totalRecipes: parseInt(totalCount.rows[0].count),
+        cuisines: cuisines.rows,
+        courses: courses.rows,
+        diets: diets.rows,
+        endpoints: {
+          "/recipes": "Get all recipes with optional filters",
+          "/recipes/:id": "Get a specific recipe by ID",
+          "/search": "Search recipes by name",
+          "/stats": "Get API statistics and available filters",
+          "/cuisines": "Get list of all cuisines",
+          "/courses": "Get list of all courses",
+          "/diets": "Get list of all diets",
+        },
+        filters: {
+          cuisine: "Filter by cuisine (e.g., ?cuisine=North Indian Recipes)",
+          course: "Filter by course (e.g., ?course=Dinner)",
+          diet: "Filter by diet (e.g., ?diet=Vegetarian)",
+          search: "Search by recipe name (e.g., ?search=curry)",
+          page: "Page number (default: 1)",
+          limit: "Results per page (default: 20, max: 100)",
+        },
+      });
+    } else {
+      return res.status(501).json({
+        error: "Stats endpoint only available for PostgreSQL",
+      });
+    }
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({
+      error: "Database error",
+      message: error.message,
+    });
+  }
+});
+
+/* GET all cuisines */
+router.get("/cuisines", async function (req, res, next) {
+  try {
+    if (DB_TYPE === "postgresql") {
+      const result = await db.query(
+        `SELECT "Cuisine", COUNT(*) as count 
+         FROM recipes 
+         WHERE "Cuisine" IS NOT NULL AND "Cuisine" != ''
+         GROUP BY "Cuisine" 
+         ORDER BY count DESC`
+      );
+      res.json({
+        total: result.rows.length,
+        cuisines: result.rows,
+      });
+    } else {
+      return res.status(501).json({
+        error: "Cuisines endpoint only available for PostgreSQL",
+      });
+    }
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({
+      error: "Database error",
+      message: error.message,
+    });
+  }
+});
+
+/* GET all courses */
+router.get("/courses", async function (req, res, next) {
+  try {
+    if (DB_TYPE === "postgresql") {
+      const result = await db.query(
+        `SELECT "Course", COUNT(*) as count 
+         FROM recipes 
+         WHERE "Course" IS NOT NULL AND "Course" != ''
+         GROUP BY "Course" 
+         ORDER BY count DESC`
+      );
+      res.json({
+        total: result.rows.length,
+        courses: result.rows,
+      });
+    } else {
+      return res.status(501).json({
+        error: "Courses endpoint only available for PostgreSQL",
+      });
+    }
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({
+      error: "Database error",
+      message: error.message,
+    });
+  }
+});
+
+/* GET all diets */
+router.get("/diets", async function (req, res, next) {
+  try {
+    if (DB_TYPE === "postgresql") {
+      const result = await db.query(
+        `SELECT "Diet", COUNT(*) as count 
+         FROM recipes 
+         WHERE "Diet" IS NOT NULL AND "Diet" != ''
+         GROUP BY "Diet" 
+         ORDER BY count DESC`
+      );
+      res.json({
+        total: result.rows.length,
+        diets: result.rows,
+      });
+    } else {
+      return res.status(501).json({
+        error: "Diets endpoint only available for PostgreSQL",
+      });
+    }
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({
+      error: "Database error",
+      message: error.message,
+    });
+  }
+});
+
+/* GET specific recipe by ID */
+router.get("/recipes/:id", async function (req, res, next) {
+  try {
+    const recipeId = parseInt(req.params.id);
+
+    if (isNaN(recipeId)) {
+      return res.status(400).json({
+        error: "Invalid recipe ID",
+      });
+    }
+
+    if (DB_TYPE === "postgresql") {
+      const result = await db.query(
+        `SELECT id, "RecipeName", "TranslatedRecipeName", 
+                "Ingredients", "TranslatedIngredients",
+                "PrepTimeInMins", "CookTimeInMins", "TotalTimeInMins",
+                "Servings", "Cuisine", "Course", "Diet",
+                "Instructions", "TranslatedInstructions",
+                "URL", "ImageURL", created_at
+         FROM recipes 
+         WHERE id = $1`,
+        [recipeId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          error: "Recipe not found",
+        });
+      }
+
+      res.json(result.rows[0]);
+    } else {
+      const sqlite3 = require("sqlite3").verbose();
+      const path = require("path");
+      const sqliteDb = new sqlite3.Database(
+        path.resolve(__dirname, "../recipe.sqlite")
+      );
+
+      sqliteDb.get(
+        `SELECT * FROM recipe WHERE id = ?`,
+        [recipeId],
+        (err, row) => {
+          if (err) {
+            console.error(err.message);
+            return res.status(500).json({ error: "Database error" });
+          }
+
+          if (!row) {
+            return res.status(404).json({
+              error: "Recipe not found",
+            });
+          }
+
+          res.json(row);
+        }
+      );
+
+      sqliteDb.close();
+    }
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({
+      error: "Database error",
+      message: error.message,
+    });
+  }
+});
+
+/* GET all recipes with dynamic filters and pagination */
 router.get("/recipes", async function (req, res, next) {
   try {
     // Pagination parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
+
+    // Filter parameters
+    const filters = {
+      cuisine: req.query.cuisine,
+      course: req.query.course,
+      diet: req.query.diet,
+      search: req.query.search,
+    };
 
     // Validate pagination parameters
     if (page < 1) {
@@ -42,34 +312,42 @@ router.get("/recipes", async function (req, res, next) {
     }
 
     if (DB_TYPE === "postgresql") {
-      // Get total count
-      const countResult = await db.query("SELECT COUNT(*) FROM recipes");
+      const params = [];
+      const whereClause = buildWhereClause(filters, params);
+
+      // Get total count with filters
+      const countQuery = `SELECT COUNT(*) FROM recipes ${whereClause}`;
+      const countResult = await db.query(countQuery, params);
       const totalRecipes = parseInt(countResult.rows[0].count);
       const totalPages = Math.ceil(totalRecipes / limit);
 
-      // Get recipes for current page
-      const result = await db.query(
-        `SELECT id, "RecipeName", "TranslatedRecipeName", 
+      // Get recipes for current page with filters
+      const dataParams = [...params, limit, offset];
+      const dataQuery = `
+        SELECT id, "RecipeName", "TranslatedRecipeName", 
                 "Ingredients", "TranslatedIngredients",
                 "PrepTimeInMins", "CookTimeInMins", "TotalTimeInMins",
                 "Servings", "Cuisine", "Course", "Diet",
                 "Instructions", "TranslatedInstructions",
                 "URL", "ImageURL", created_at
          FROM recipes 
+         ${whereClause}
          ORDER BY "RecipeName" 
-         LIMIT $1 OFFSET $2`,
-        [limit, offset]
-      );
+         LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+      `;
+
+      const result = await db.query(dataQuery, dataParams);
 
       res.json({
         page: page,
         limit: limit,
         totalRecipes: totalRecipes,
         totalPages: totalPages,
+        filters: filters,
         recipes: result.rows,
       });
     } else {
-      // SQLite query (fallback)
+      // SQLite query (fallback) - basic implementation
       const sqlite3 = require("sqlite3").verbose();
       const path = require("path");
       const sqliteDb = new sqlite3.Database(
@@ -117,20 +395,13 @@ router.get("/recipes", async function (req, res, next) {
 });
 
 /* GET recipe search with pagination */
-router.get("/", async function (req, res, next) {
+router.get("/search", async function (req, res, next) {
   try {
-    if (Object.keys(req.query).length === 0) {
-      return res.status(400).json({
-        error:
-          "No query parameter provided. Use ?q=searchterm or /recipes for all recipes",
-      });
-    }
-
     const searchQuery = req.query.q;
 
     if (!searchQuery || searchQuery.trim().length === 0) {
       return res.status(400).json({
-        error: "Query parameter 'q' cannot be empty",
+        error: "Query parameter 'q' is required and cannot be empty",
       });
     }
 
@@ -236,6 +507,44 @@ router.get("/", async function (req, res, next) {
       message: error.message,
     });
   }
+});
+
+/* Root endpoint - API documentation */
+router.get("/", async function (req, res, next) {
+  res.json({
+    message: "Indian Recipe API",
+    version: "2.0",
+    endpoints: {
+      "/": "API documentation (this page)",
+      "/stats": "Get API statistics and available filters",
+      "/recipes": "Get all recipes with optional filters and pagination",
+      "/recipes/:id": "Get a specific recipe by ID",
+      "/search?q=term": "Search recipes by name",
+      "/cuisines": "Get list of all cuisines with counts",
+      "/courses": "Get list of all courses with counts",
+      "/diets": "Get list of all diets with counts",
+    },
+    filterParameters: {
+      cuisine:
+        "Filter recipes by cuisine (e.g., ?cuisine=North Indian Recipes)",
+      course: "Filter recipes by course (e.g., ?course=Dinner)",
+      diet: "Filter recipes by diet (e.g., ?diet=Vegetarian)",
+      search: "Search in recipe name (e.g., ?search=curry)",
+      page: "Page number for pagination (default: 1)",
+      limit: "Results per page (default: 20, max: 100)",
+    },
+    examples: {
+      getAllRecipes: "/recipes",
+      paginatedRecipes: "/recipes?page=2&limit=50",
+      vegetarianRecipes: "/recipes?diet=Vegetarian",
+      dinnerRecipes: "/recipes?course=Dinner",
+      northIndianRecipes: "/recipes?cuisine=North Indian Recipes",
+      combinedFilters: "/recipes?diet=Vegetarian&course=Dinner&page=1&limit=20",
+      searchRecipes: "/search?q=curry",
+      getRecipeById: "/recipes/123",
+      getStats: "/stats",
+    },
+  });
 });
 
 module.exports = router;
