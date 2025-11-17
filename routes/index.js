@@ -545,16 +545,16 @@ router.get("/recipes/:id/translations", async function (req, res, next) {
       res.json({
         id: recipe.id,
         recipeName: {
-          original: recipe.TranslatedRecipeName,
-          translated: recipe.RecipeName,
+          original: recipe.RecipeName,
+          translated: recipe.TranslatedRecipeName,
         },
         ingredients: {
-          original: recipe.TranslatedIngredients,
-          translated: recipe.Ingredients,
+          original: recipe.Ingredients,
+          translated: recipe.TranslatedIngredients,
         },
         instructions: {
-          original: recipe.TranslatedInstructions,
-          translated: recipe.Instructions,
+          original: recipe.Instructions,
+          translated: recipe.TranslatedInstructions,
         },
         metadata: {
           prepTimeInMins: recipe.PrepTimeInMins,
@@ -594,16 +594,16 @@ router.get("/recipes/:id/translations", async function (req, res, next) {
           res.json({
             id: row.id,
             recipeName: {
-              original: row.TranslatedRecipeName || row.RecipeName,
-              translated: row.RecipeName,
+              original: row.RecipeName,
+              translated: row.TranslatedRecipeName || row.RecipeName,
             },
             ingredients: {
-              original: row.TranslatedIngredients || row.Ingredients,
-              translated: row.Ingredients,
+              original: row.Ingredients,
+              translated: row.TranslatedIngredients || row.Ingredients,
             },
             instructions: {
-              original: row.TranslatedInstructions || row.Instructions,
-              translated: row.Instructions,
+              original: row.Instructions,
+              translated: row.TranslatedInstructions || row.Instructions,
             },
             metadata: {
               prepTimeInMins: row.PrepTimeInMins,
@@ -644,9 +644,9 @@ router.get("/recipes/:id/original", async function (req, res, next) {
 
     if (DB_TYPE === "postgresql") {
       const result = await db.query(
-        `SELECT id, "TranslatedRecipeName" as "RecipeName", 
-                "TranslatedIngredients" as "Ingredients",
-                "TranslatedInstructions" as "Instructions",
+        `SELECT id, "RecipeName", 
+                "Ingredients",
+                "Instructions",
                 "PrepTimeInMins", "CookTimeInMins", "TotalTimeInMins",
                 "Servings", "Cuisine", "Course", "Diet",
                 "URL", "ImageURL", created_at
@@ -670,9 +670,9 @@ router.get("/recipes/:id/original", async function (req, res, next) {
       );
 
       sqliteDb.get(
-        `SELECT id, TranslatedRecipeName as RecipeName, 
-                TranslatedIngredients as Ingredients,
-                TranslatedInstructions as Instructions,
+        `SELECT id, RecipeName, 
+                Ingredients,
+                Instructions,
                 PrepTimeInMins, CookTimeInMins, TotalTimeInMins,
                 Servings, Cuisine, Course, Diet, URL, ImageURL
          FROM recipe WHERE id = ?`,
@@ -717,7 +717,9 @@ router.get("/recipes/:id/translated", async function (req, res, next) {
 
     if (DB_TYPE === "postgresql") {
       const result = await db.query(
-        `SELECT id, "RecipeName", "Ingredients", "Instructions",
+        `SELECT id, "TranslatedRecipeName" as "RecipeName", 
+                "TranslatedIngredients" as "Ingredients", 
+                "TranslatedInstructions" as "Instructions",
                 "PrepTimeInMins", "CookTimeInMins", "TotalTimeInMins",
                 "Servings", "Cuisine", "Course", "Diet",
                 "URL", "ImageURL", created_at
@@ -741,7 +743,9 @@ router.get("/recipes/:id/translated", async function (req, res, next) {
       );
 
       sqliteDb.get(
-        `SELECT id, RecipeName, Ingredients, Instructions,
+        `SELECT id, TranslatedRecipeName as RecipeName, 
+                TranslatedIngredients as Ingredients, 
+                TranslatedInstructions as Instructions,
                 PrepTimeInMins, CookTimeInMins, TotalTimeInMins,
                 Servings, Cuisine, Course, Diet, URL, ImageURL
          FROM recipe WHERE id = ?`,
