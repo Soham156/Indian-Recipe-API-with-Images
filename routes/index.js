@@ -509,6 +509,270 @@ router.get("/search", async function (req, res, next) {
   }
 });
 
+/* GET recipe with original and translated comparison */
+router.get("/recipes/:id/translations", async function (req, res, next) {
+  try {
+    const recipeId = parseInt(req.params.id);
+
+    if (isNaN(recipeId)) {
+      return res.status(400).json({
+        error: "Invalid recipe ID",
+      });
+    }
+
+    if (DB_TYPE === "postgresql") {
+      const result = await db.query(
+        `SELECT id, "RecipeName", "TranslatedRecipeName", 
+                "Ingredients", "TranslatedIngredients",
+                "Instructions", "TranslatedInstructions",
+                "PrepTimeInMins", "CookTimeInMins", "TotalTimeInMins",
+                "Servings", "Cuisine", "Course", "Diet",
+                "URL", "ImageURL", created_at
+         FROM recipes 
+         WHERE id = $1`,
+        [recipeId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          error: "Recipe not found",
+        });
+      }
+
+      const recipe = result.rows[0];
+
+      // Format the response to show original vs translated
+      res.json({
+        id: recipe.id,
+        recipeName: {
+          original: recipe.TranslatedRecipeName,
+          translated: recipe.RecipeName,
+        },
+        ingredients: {
+          original: recipe.TranslatedIngredients,
+          translated: recipe.Ingredients,
+        },
+        instructions: {
+          original: recipe.TranslatedInstructions,
+          translated: recipe.Instructions,
+        },
+        metadata: {
+          prepTimeInMins: recipe.PrepTimeInMins,
+          cookTimeInMins: recipe.CookTimeInMins,
+          totalTimeInMins: recipe.TotalTimeInMins,
+          servings: recipe.Servings,
+          cuisine: recipe.Cuisine,
+          course: recipe.Course,
+          diet: recipe.Diet,
+          url: recipe.URL,
+          imageURL: recipe.ImageURL,
+          createdAt: recipe.created_at,
+        },
+      });
+    } else {
+      const sqlite3 = require("sqlite3").verbose();
+      const path = require("path");
+      const sqliteDb = new sqlite3.Database(
+        path.resolve(__dirname, "../recipe.sqlite")
+      );
+
+      sqliteDb.get(
+        `SELECT * FROM recipe WHERE id = ?`,
+        [recipeId],
+        (err, row) => {
+          if (err) {
+            console.error(err.message);
+            return res.status(500).json({ error: "Database error" });
+          }
+
+          if (!row) {
+            return res.status(404).json({
+              error: "Recipe not found",
+            });
+          }
+
+          res.json({
+            id: row.id,
+            recipeName: {
+              original: row.TranslatedRecipeName || row.RecipeName,
+              translated: row.RecipeName,
+            },
+            ingredients: {
+              original: row.TranslatedIngredients || row.Ingredients,
+              translated: row.Ingredients,
+            },
+            instructions: {
+              original: row.TranslatedInstructions || row.Instructions,
+              translated: row.Instructions,
+            },
+            metadata: {
+              prepTimeInMins: row.PrepTimeInMins,
+              cookTimeInMins: row.CookTimeInMins,
+              totalTimeInMins: row.TotalTimeInMins,
+              servings: row.Servings,
+              cuisine: row.Cuisine,
+              course: row.Course,
+              diet: row.Diet,
+              url: row.URL,
+              imageURL: row.ImageURL,
+            },
+          });
+        }
+      );
+
+      sqliteDb.close();
+    }
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({
+      error: "Database error",
+      message: error.message,
+    });
+  }
+});
+
+/* GET only original (untranslated) recipe data */
+router.get("/recipes/:id/original", async function (req, res, next) {
+  try {
+    const recipeId = parseInt(req.params.id);
+
+    if (isNaN(recipeId)) {
+      return res.status(400).json({
+        error: "Invalid recipe ID",
+      });
+    }
+
+    if (DB_TYPE === "postgresql") {
+      const result = await db.query(
+        `SELECT id, "TranslatedRecipeName" as "RecipeName", 
+                "TranslatedIngredients" as "Ingredients",
+                "TranslatedInstructions" as "Instructions",
+                "PrepTimeInMins", "CookTimeInMins", "TotalTimeInMins",
+                "Servings", "Cuisine", "Course", "Diet",
+                "URL", "ImageURL", created_at
+         FROM recipes 
+         WHERE id = $1`,
+        [recipeId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          error: "Recipe not found",
+        });
+      }
+
+      res.json(result.rows[0]);
+    } else {
+      const sqlite3 = require("sqlite3").verbose();
+      const path = require("path");
+      const sqliteDb = new sqlite3.Database(
+        path.resolve(__dirname, "../recipe.sqlite")
+      );
+
+      sqliteDb.get(
+        `SELECT id, TranslatedRecipeName as RecipeName, 
+                TranslatedIngredients as Ingredients,
+                TranslatedInstructions as Instructions,
+                PrepTimeInMins, CookTimeInMins, TotalTimeInMins,
+                Servings, Cuisine, Course, Diet, URL, ImageURL
+         FROM recipe WHERE id = ?`,
+        [recipeId],
+        (err, row) => {
+          if (err) {
+            console.error(err.message);
+            return res.status(500).json({ error: "Database error" });
+          }
+
+          if (!row) {
+            return res.status(404).json({
+              error: "Recipe not found",
+            });
+          }
+
+          res.json(row);
+        }
+      );
+
+      sqliteDb.close();
+    }
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({
+      error: "Database error",
+      message: error.message,
+    });
+  }
+});
+
+/* GET only translated (English) recipe data */
+router.get("/recipes/:id/translated", async function (req, res, next) {
+  try {
+    const recipeId = parseInt(req.params.id);
+
+    if (isNaN(recipeId)) {
+      return res.status(400).json({
+        error: "Invalid recipe ID",
+      });
+    }
+
+    if (DB_TYPE === "postgresql") {
+      const result = await db.query(
+        `SELECT id, "RecipeName", "Ingredients", "Instructions",
+                "PrepTimeInMins", "CookTimeInMins", "TotalTimeInMins",
+                "Servings", "Cuisine", "Course", "Diet",
+                "URL", "ImageURL", created_at
+         FROM recipes 
+         WHERE id = $1`,
+        [recipeId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          error: "Recipe not found",
+        });
+      }
+
+      res.json(result.rows[0]);
+    } else {
+      const sqlite3 = require("sqlite3").verbose();
+      const path = require("path");
+      const sqliteDb = new sqlite3.Database(
+        path.resolve(__dirname, "../recipe.sqlite")
+      );
+
+      sqliteDb.get(
+        `SELECT id, RecipeName, Ingredients, Instructions,
+                PrepTimeInMins, CookTimeInMins, TotalTimeInMins,
+                Servings, Cuisine, Course, Diet, URL, ImageURL
+         FROM recipe WHERE id = ?`,
+        [recipeId],
+        (err, row) => {
+          if (err) {
+            console.error(err.message);
+            return res.status(500).json({ error: "Database error" });
+          }
+
+          if (!row) {
+            return res.status(404).json({
+              error: "Recipe not found",
+            });
+          }
+
+          res.json(row);
+        }
+      );
+
+      sqliteDb.close();
+    }
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({
+      error: "Database error",
+      message: error.message,
+    });
+  }
+});
+
 /* Root endpoint - API documentation */
 router.get("/", async function (req, res, next) {
   res.json({
@@ -519,6 +783,12 @@ router.get("/", async function (req, res, next) {
       "/stats": "Get API statistics and available filters",
       "/recipes": "Get all recipes with optional filters and pagination",
       "/recipes/:id": "Get a specific recipe by ID",
+      "/recipes/:id/translations":
+        "Get recipe with original and translated side-by-side comparison",
+      "/recipes/:id/original":
+        "Get only the original (untranslated) recipe data",
+      "/recipes/:id/translated":
+        "Get only the translated (English) recipe data",
       "/search?q=term": "Search recipes by name",
       "/cuisines": "Get list of all cuisines with counts",
       "/courses": "Get list of all courses with counts",
@@ -542,6 +812,9 @@ router.get("/", async function (req, res, next) {
       combinedFilters: "/recipes?diet=Vegetarian&course=Dinner&page=1&limit=20",
       searchRecipes: "/search?q=curry",
       getRecipeById: "/recipes/123",
+      getRecipeTranslations: "/recipes/123/translations",
+      getOriginalRecipe: "/recipes/123/original",
+      getTranslatedRecipe: "/recipes/123/translated",
       getStats: "/stats",
     },
   });

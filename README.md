@@ -75,16 +75,19 @@ For detailed documentation of all endpoints and features, see **[API_DOCUMENTATI
 
 ### Available Endpoints
 
-| Endpoint             | Description                           |
-| -------------------- | ------------------------------------- |
-| `GET /`              | API documentation and information     |
-| `GET /recipes`       | Get all recipes with optional filters |
-| `GET /recipes/:id`   | Get a specific recipe by ID           |
-| `GET /search?q=term` | Search recipes by name                |
-| `GET /stats`         | Get API statistics and filter options |
-| `GET /cuisines`      | List all cuisines with counts         |
-| `GET /courses`       | List all courses with counts          |
-| `GET /diets`         | List all diet types with counts       |
+| Endpoint                        | Description                                      |
+| ------------------------------- | ------------------------------------------------ |
+| `GET /`                         | API documentation and information                |
+| `GET /recipes`                  | Get all recipes with optional filters            |
+| `GET /recipes/:id`              | Get a specific recipe by ID                      |
+| `GET /recipes/:id/translations` | Get recipe with original & translated comparison |
+| `GET /recipes/:id/original`     | Get only original (untranslated) recipe          |
+| `GET /recipes/:id/translated`   | Get only translated (English) recipe             |
+| `GET /search?q=term`            | Search recipes by name                           |
+| `GET /stats`                    | Get API statistics and filter options            |
+| `GET /cuisines`                 | List all cuisines with counts                    |
+| `GET /courses`                  | List all courses with counts                     |
+| `GET /diets`                    | List all diet types with counts                  |
 
 ### Quick Examples
 
@@ -111,7 +114,48 @@ GET /recipes?search=curry&diet=Vegetarian
 #### 3. Get Specific Recipe
 
 ```
+# Get full recipe with both original and translated data
 GET /recipes/123
+
+# Get side-by-side comparison of original and translated
+GET /recipes/123/translations
+
+# Get only original (untranslated) recipe
+GET /recipes/123/original
+
+# Get only translated (English) recipe
+GET /recipes/123/translated
+```
+
+**Example Response for `/recipes/123/translations`:**
+
+```json
+{
+  "id": 123,
+  "recipeName": {
+    "original": "मक्के की रोटी",
+    "translated": "Makke Ki Roti"
+  },
+  "ingredients": {
+    "original": "मक्के का आटा, पानी, नमक...",
+    "translated": "Corn flour, Water, Salt..."
+  },
+  "instructions": {
+    "original": "आटा गूंधें और गोल रोटी बनाएं...",
+    "translated": "Knead the dough and make round rotis..."
+  },
+  "metadata": {
+    "prepTimeInMins": "15",
+    "cookTimeInMins": "20",
+    "totalTimeInMins": "35",
+    "servings": "4",
+    "cuisine": "North Indian Recipes",
+    "course": "Main Course",
+    "diet": "Vegetarian",
+    "url": "https://...",
+    "imageURL": "https://..."
+  }
+}
 ```
 
 #### 4. Search Recipes
@@ -200,11 +244,32 @@ The API has CORS enabled and can be called from any website. See [API_USAGE.md](
 ### Quick Example (JavaScript)
 
 ```javascript
-// Simple fetch example
-fetch("http://localhost:3000/?q=biryani")
+// Search for recipes
+fetch("http://localhost:3000/search?q=biryani")
   .then((response) => response.json())
   .then((data) => console.log(data))
   .catch((error) => console.error("Error:", error));
+
+// Get recipe with translations
+fetch("http://localhost:3000/recipes/123/translations")
+  .then((response) => response.json())
+  .then((recipe) => {
+    console.log("Original name:", recipe.recipeName.original);
+    console.log("Translated name:", recipe.recipeName.translated);
+    console.log("Original ingredients:", recipe.ingredients.original);
+    console.log("Translated ingredients:", recipe.ingredients.translated);
+  })
+  .catch((error) => console.error("Error:", error));
+
+// Get only original recipe
+fetch("http://localhost:3000/recipes/123/original")
+  .then((response) => response.json())
+  .then((data) => console.log(data));
+
+// Get only translated recipe
+fetch("http://localhost:3000/recipes/123/translated")
+  .then((response) => response.json())
+  .then((data) => console.log(data));
 ```
 
 ### Test the API
